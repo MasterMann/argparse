@@ -1,8 +1,18 @@
-# Argument Parser for Modern C++
+<p align="center">
+  <img height="100" src="https://i.imgur.com/oDXeMUQ.png" alt="argparse"/>
+</p>
+
+<p align="center">
+  <img src="https://travis-ci.org/p-ranav/argparse.svg?branch=master" alt="travis"/>
+  <a href="https://github.com/p-ranav/argparse/blob/master/LICENSE">
+    <img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="license"/>
+  </a>
+  <img src="https://img.shields.io/badge/version-1.8-blue.svg?cacheSeconds=2592000" alt="version"/>
+</p>
 
 ## Highlights
 
-* Header-only library
+* Single header file
 * Requires C++17
 * MIT License
 
@@ -20,7 +30,14 @@ To start parsing command-line arguments, create an ```ArgumentParser```.
 argparse::ArgumentParser program("program name");
 ```
 
-Argparse supports a variety of argument types including positional, optional, and compound arguments.
+To add a new argument, simply call ```.add_argument(...)```. You can provide a variadic list of argument names that you want to group together, e.g., ```-v``` and ```--verbose```
+
+```cpp
+program.add_argument("foo");
+program.add_argument("-v", "--verbose"); // parameter packing
+```
+
+Argparse supports a variety of argument types including positional, optional, and compound arguments. Below you can see how to configure each of these types:
 
 ### Positional Arguments
 
@@ -36,7 +53,14 @@ int main(int argc, char *argv[]) {
     .help("display the square of a given integer")
     .action([](const std::string& value) { return std::stoi(value); });
 
-  program.parse_args(argc, argv);
+  try {
+    program.parse_args(argc, argv);
+  }
+  catch (const std::runtime_error& err) {
+    std::cout << err.what() << std::endl;
+    program.print_help();
+    exit(0);
+  }
   
   auto input = program.get<int>("square");
   std::cout << (input * input) << std::endl;
@@ -71,7 +95,14 @@ program.add_argument("--verbose")
   .default_value(false)
   .implicit_value(true);
 
-program.parse_args(argc, argv);
+try {
+  program.parse_args(argc, argv);
+}
+catch (const std::runtime_error& err) {
+  std::cout << err.what() << std::endl;
+  program.print_help();
+  exit(0);
+}
 
 if (program["--verbose"] == true) {
     std::cout << "Verbosity enabled" << std::endl;
@@ -88,6 +119,63 @@ Here's what's happening:
 * Since the argument is actually optional, no error is thrown when running the program without ```--verbose```. Note that by using ```.default_value(false)```, if the optional argument isn’t used, it's value is automatically set to false. 
 * By using ```.implicit_value(true)```, the user specifies that this option is more of a flag than something that requires a value. When the user provides the --verbose option, it's value is set to true. 
 
+#### Requiring optional arguments
+
+There are scenarios where you would like to make an optional argument ***required***. As discussed above, optional arguments either begin with `-` or `--`. You can make these types of arguments required like so:
+
+```cpp
+	program.add_argument("-o", "--output")
+		.required()
+		.help("specify the output file.");
+```
+
+If the user does not provide a value for this parameter, an exception is thrown. 
+
+Alternatively, you could provide a default value like so:
+
+```cpp
+	program.add_argument("-o", "--output")
+		.default_value(std::string("-"))
+                .required()
+		.help("specify the output file.");
+```
+
+### Negative Numbers
+
+Optional arguments start with ```-```. Can ```argparse``` handle negative numbers? The answer is yes!
+
+```cpp
+argparse::ArgumentParser program;
+
+program.add_argument("integer")
+  .help("Input number")
+  .action([](const std::string& value) { return std::stoi(value); });
+  
+program.add_argument("floats")
+  .help("Vector of floats")
+  .nargs(4)
+  .action([](const std::string& value) { return std::stof(value); });
+
+try {
+  program.parse_args(argc, argv);
+}
+catch (const std::runtime_error& err) {
+  std::cout << err.what() << std::endl;
+  program.print_help();
+  exit(0);
+}
+
+// Some code to print arguments
+```
+
+```bash
+$ ./main -5 -1.1 -3.1415 -3.1e2 -4.51329E3
+integer : -5
+floats  : -1.1 -3.1415 -310 -4513.29
+```
+
+As you can see here, ```argparse``` supports negative integers, negative floats and scientific notation. 
+
 ### Combining Positional and Optional Arguments
 
 ```cpp
@@ -101,7 +189,14 @@ program.add_argument("--verbose")
   .default_value(false)
   .implicit_value(true);
 
-program.parse_args(argc, argv);
+try {
+  program.parse_args(argc, argv);
+}
+catch (const std::runtime_error& err) {
+  std::cout << err.what() << std::endl;
+  program.print_help();
+  exit(0);
+}
 
 int input = program.get<int>("square");
 
@@ -151,7 +246,14 @@ program.add_argument("--input_files")
   .help("The list of input files")
   .nargs(2);
 
-program.parse_args(argc, argv);  // Example: ./main --input_files config.yml System.xml
+try {
+  program.parse_args(argc, argv);   // Example: ./main --input_files config.yml System.xml
+}
+catch (const std::runtime_error& err) {
+  std::cout << err.what() << std::endl;
+  program.print_help();
+  exit(0);
+}
 
 auto files = program.get<std::vector<std::string>>("--input_files");  // {"config.yml", "System.xml"}
 ```
@@ -173,7 +275,14 @@ program.add_argument("--query_point")
   .default_value(std::vector<double>{0.0, 0.0, 0.0})
   .action([](const std::string& value) { return std::stod(value); });
 
-program.parse_args(argc, argv);  // Example: ./main --query_point 3.5 4.7 9.2
+try {
+  program.parse_args(argc, argv); // Example: ./main --query_point 3.5 4.7 9.2
+}
+catch (const std::runtime_error& err) {
+  std::cout << err.what() << std::endl;
+  program.print_help();
+  exit(0);
+}
 
 auto query_point = program.get<std::vector<double>>("--query_point");  // {3.5, 4.7, 9.2}
 ```
@@ -198,7 +307,14 @@ program.add_argument("-c")
   .default_value(std::vector<float>{0.0f, 0.0f})
   .action([](const std::string& value) { return std::stof(value); });
 
-program.parse_args(argc, argv);                    // Example: ./main -abc 1.95 2.47 
+try {
+  program.parse_args(argc, argv);                  // Example: ./main -abc 1.95 2.47
+}
+catch (const std::runtime_error& err) {
+  std::cout << err.what() << std::endl;
+  program.print_help();
+  exit(0);
+}
 
 auto a = program.get<bool>("-a");                  // true
 auto b = program.get<bool>("-b");                  // true
@@ -267,7 +383,14 @@ program.add_argument("config")
     return config_json;
   });
 
-program.parse_args({"./test", "config.json"});
+try {
+  program.parse_args({"./test", "config.json"});
+}
+catch (const std::runtime_error& err) {
+  std::cout << err.what() << std::endl;
+  program.print_help();
+  exit(0);
+}
 
 nlohmann::json config = program.get<nlohmann::json>("config");
 ```
@@ -296,7 +419,14 @@ program.add_argument("-c")
 program.add_argument("--files")
   .nargs(3);
 
-program.parse_args(argc, argv);
+try {
+  program.parse_args(argc, argv);
+}
+catch (const std::runtime_error& err) {
+  std::cout << err.what() << std::endl;
+  program.print_help();
+  exit(0);
+}
 
 auto numbers = program.get<std::vector<int>>("numbers");        // {1, 2, 3}
 auto a = program.get<bool>("-a");                               // true
@@ -308,12 +438,12 @@ auto files = program.get<std::vector<std::string>>("--files");  // {"a.txt", "b.
 ```
 
 ```bash
-$ ./main 1 -abc 3.14 2.718 2 --files a.txt b.txt c.txt 3
+$ ./main 1 2 3 -abc 3.14 2.718 --files a.txt b.txt c.txt
 numbers = {1, 2, 3}
 a = true
 b = true
 c = {3.14, 2.718}
-d = {"a.txt", "b.txt", "c.txt"}
+files = {"a.txt", "b.txt", "c.txt"}
 ```
 
 ### Restricting the set of values for an argument
@@ -331,7 +461,14 @@ program.add_argument("input")
     return std::string{ "baz" };
   });
 
-program.parse_args(argc, argv);
+try {
+  program.parse_args(argc, argv);
+}
+catch (const std::runtime_error& err) {
+  std::cout << err.what() << std::endl;
+  program.print_help();
+  exit(0);
+}
 
 auto input = program.get("input");
 std::cout << input << std::endl;
@@ -348,7 +485,7 @@ baz
 * MSVC >= 2017
 
 ## Contributing
-Contributions are welcomed, have a look at the [CONTRIBUTING.md](CONTRIBUTING.md) document for more information.
+Contributions are welcome, have a look at the [CONTRIBUTING.md](CONTRIBUTING.md) document for more information.
 
 ## License
 The project is available under the [MIT](https://opensource.org/licenses/MIT) license.
